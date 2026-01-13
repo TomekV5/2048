@@ -25,6 +25,28 @@
 #define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
 #define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+const char* colors[] = {
+	RESET,
+	/*BLACK,*/
+	RED,
+	GREEN,
+	YELLOW,
+	BLUE,
+	MAGENTA,
+	CYAN,
+	WHITE,
+	BOLDBLACK,
+	BOLDRED,
+	BOLDGREEN,
+	BOLDYELLOW,
+	BOLDBLUE,
+	BOLDMAGENTA,
+	BOLDCYAN,
+	BOLDWHITE
+};
+
+const int COLOR_COUNT = 16;
+
 
 std::mt19937 randomGenerator(std::random_device{}());
 
@@ -32,6 +54,14 @@ const int MaxSize = 10;
 const int MinSize = 4;
 const int MaxNameSize = 100;
 
+int getpow(int number) {
+	int power = 0;
+	while (number > 1) {
+		number /= 2;
+		power++;
+	}
+	return power;
+}
 int CalculateScore(int board[MaxSize][MaxSize], int size)
 {
 	int score = 0;
@@ -51,7 +81,7 @@ void printBoard(int board[MaxSize][MaxSize], int size)
 	{
 		for (int j = 0; j < size; ++j)
 		{
-			std::cout << board[i][j] << " ";
+			std::cout << colors[getpow(board[i][j])] << board[i][j] << colors[0] << " ";
 		}
 		std::cout << std::endl;
 	}
@@ -261,7 +291,7 @@ void StartGame()
 	int size = 0;
 	char name[MaxNameSize] = {};
 	PrepareGame(size, name);
-	size = 2;
+	//size = 2;
 	int board[MaxSize][MaxSize] = { 0 };
 	int full = 0;
 	bool quit = false;
@@ -292,7 +322,6 @@ void StartGame()
 			std::cout << "Game Over! No more moves possible.\n";
 			break;
 		}
-
 	}
 	std::cout << BLUE << "hello world" << RESET << std::endl;
 }
