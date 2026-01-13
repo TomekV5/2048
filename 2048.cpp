@@ -1,7 +1,12 @@
-// 2048.cpp : This file contains the 'main' function. Program execution begins and ends there.
+﻿// 2048.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+//#include<ctime>
 #include <iostream>
+#include <fstream>
+#include <random>
+#include <cstdlib>
+#include <ctime>
 
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"      /* Black */
@@ -20,6 +25,8 @@
 #define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
 #define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+
+std::mt19937 randomGenerator(std::random_device{}());
 
 const int MaxSize = 10;
 const int MinSize = 4;
@@ -51,61 +58,156 @@ void printBoard(int board[MaxSize][MaxSize], int size)
 	std::cout << "Score: " << score << std::endl;
 }
 
-bool placeRandomTile(int board[MaxSize][MaxSize], int size, int& full)
+void placeRandomTile(int board[MaxSize][MaxSize], int size)
 {
-	while (true)
-	{
-		if (full == size * size)
-			return false;
-		int row = rand() % size;
-		int col = rand() % size;
-		if (board[row][col] == 0)
-		{
-			int value = (rand() % 10 == 0) ? 4 : 2;
-			board[row][col] = value;
-			++full;
-			break;
+	srand(time(nullptr));
+	int emptyCount = 0;
+
+	// броим празните клетки
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			if (board[i][j] == 0)
+				emptyCount++;
 		}
 	}
-	return true;
+
+	// ако няма празни клетки
+
+	// избираме случайна празна позиция
+	int target = rand() % emptyCount;
+
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			if (board[i][j] == 0) {
+				if (target == 0) {
+					board[i][j] = (rand() % 10 == 0) ? 4 : 2;
+					return;
+				}
+				target--;
+			}
+		}
+	}
 }
 void clearConsole()
 {
 	system("cls");
 }
-void MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
+
+bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 {
-	if (direction == 'w' || direction == 'W')
-	{
-		// Move Up
+	int curentboard[MaxSize][MaxSize] = { 0 };
+	for (int r = 0; r < size; r++) {
+		for (int c = 0; c < size; c++) {
+			curentboard[r][c] = board[r][c];
+		}
 	}
-	else if (direction == 's' || direction == 'S')
+
+	if (direction == 'w' || direction == 'W') // Up
 	{
-		// Move Down
-	}
-	else if (direction == 'a' || direction == 'A')
-	{
-		for (int i = 0; i < size; ++i) {
-			for (int j = 1; j < size; ++j)
+		for (int j = 0; j < size; j++) // column
+		{
+			bool merged[MaxSize] = { false }; // track merged tiles
+			for (int i = 1; i < size; i++)
 			{
-				if (board[i][j - 1] == 0)
+				if (board[i][j] == 0) continue;
+				int row = i;
+				while (row > 0 && board[row - 1][j] == 0)
 				{
-					board[i][j - 1] = board[i][j];
-					board[i][j] = 0;
+					board[row - 1][j] = board[row][j];
+					board[row][j] = 0;
+					row--;
 				}
-				else if (board[i][j - 1] == board[i][j])
+				if (row > 0 && board[row - 1][j] == board[row][j] && !merged[row - 1])
 				{
-					board[i][j - 1] *= 2;
-					board[i][j] = 0;
+					board[row - 1][j] *= 2;
+					board[row][j] = 0;
+					merged[row - 1] = true;
 				}
 			}
 		}
 	}
-	else if (direction == 'd' || direction == 'D')
+	else if (direction == 's' || direction == 'S') // Down
 	{
-
+		for (int j = 0; j < size; j++)
+		{
+			bool merged[MaxSize] = { false };
+			for (int i = size - 2; i >= 0; i--)
+			{
+				if (board[i][j] == 0) continue;
+				int row = i;
+				while (row < size - 1 && board[row + 1][j] == 0)
+				{
+					board[row + 1][j] = board[row][j];
+					board[row][j] = 0;
+					row++;
+				}
+				if (row < size - 1 && board[row + 1][j] == board[row][j] && !merged[row + 1])
+				{
+					board[row + 1][j] *= 2;
+					board[row][j] = 0;
+					merged[row + 1] = true;
+				}
+			}
+		}
 	}
+	else if (direction == 'a' || direction == 'A') // Left
+	{
+		for (int i = 0; i < size; i++)
+		{
+			bool merged[MaxSize] = { false };
+			for (int j = 1; j < size; j++)
+			{
+				if (board[i][j] == 0) continue;
+				int col = j;
+				while (col > 0 && board[i][col - 1] == 0)
+				{
+					board[i][col - 1] = board[i][col];
+					board[i][col] = 0;
+					col--;
+				}
+				if (col > 0 && board[i][col - 1] == board[i][col] && !merged[col - 1])
+				{
+					board[i][col - 1] *= 2;
+					board[i][col] = 0;
+					merged[col - 1] = true;
+				}
+			}
+		}
+	}
+	else if (direction == 'd' || direction == 'D') // Right
+	{
+		for (int i = 0; i < size; i++)
+		{
+			bool merged[MaxSize] = { false };
+			for (int j = size - 2; j >= 0; j--)
+			{
+				if (board[i][j] == 0) continue;
+				int col = j;
+				while (col < size - 1 && board[i][col + 1] == 0)
+				{
+					board[i][col + 1] = board[i][col];
+					board[i][col] = 0;
+					col++;
+				}
+				if (col < size - 1 && board[i][col + 1] == board[i][col] && !merged[col + 1])
+				{
+					board[i][col + 1] *= 2;
+					board[i][col] = 0;
+					merged[col + 1] = true;
+				}
+			}
+		}
+	}
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			if (curentboard[i][j] != board[i][j]) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
+
 void printWelcomeMessage()
 {
 	std::cout << "=========================\n";
@@ -115,52 +217,106 @@ void printWelcomeMessage()
 }
 void PrepareGame(int& size, char* name)
 {
-	std::cout << "Enter your name: (MAX 100 Characters)";
+	std::cout << "Enter your name: (MAX 100 Characters) ";
 	std::cin >> name;
 	std::cout << "Enter board size (4-10): ";
 	std::cin >> size;
+
 	while (size < MinSize || size > MaxSize)
 	{
 		std::cout << "Invalid size! Enter board size (4-10): ";
 		std::cin >> size;
 	}
 }
+bool IsGameOver(int board[MaxSize][MaxSize], int size)
+{
+	for (int i = 0; i < size; ++i)
+	{
+		for (int j = 0; j < size; ++j)
+		{
+			if (board[i][j] == 0)
+				return false;
+		}
+	}
+	for (int i = 0; i < size; ++i)
+	{
+		for (int j = 0; j < size - 1; ++j)
+		{
+			if (board[i][j] == board[i][j + 1])
+				return false;
+		}
+	}
+	for (int j = 0; j < size; ++j)
+	{
+		for (int i = 0; i < size - 1; ++i)
+		{
+			if (board[i][j] == board[i + 1][j])
+				return false;
+		}
+	}
+	return true;
+}
 void StartGame()
 {
 	int size = 0;
 	char name[MaxNameSize] = {};
 	PrepareGame(size, name);
+	size = 2;
 	int board[MaxSize][MaxSize] = { 0 };
 	int full = 0;
+	bool quit = false;
+	bool ended = false;
 	while (true)
 	{
 		clearConsole();
-		if (placeRandomTile(board, size, full)) {
+		placeRandomTile(board, size);
+		char move;
+		do {
 			printBoard(board, size);
-			std::cout << "Use W/A/S/D to move tiles, Q to quit: ";
-			char move;
-			std::cin >> move;
-			if (move == 'Q' || move == 'q')
+			if (IsGameOver(board, size)) {
+				ended = true;
 				break;
-			MoveTiles(board, size, move);
+			}
+			std::cout << "Use W/A/S/D to move tiles, Q to quit: ";
+			std::cin >> move;
+			if (move == 'Q' || move == 'q') {
+				quit = true;
+				break;
+			}
+		} while (!MoveTiles(board, size, move));
+		if (quit) {
+			std::cout << "Thanks for playing, " << name << "!\n";
+			break;
 		}
-		else {
+		if (ended) {
 			std::cout << "Game Over! No more moves possible.\n";
 			break;
 		}
+
 	}
 	std::cout << BLUE << "hello world" << RESET << std::endl;
 }
 
 int main()
 {
-	int i;
+	/*int i;
 	for (i = 0; i < 900000000; i++) {
-		//std::cout << i << "\n";
+		std::cout << i << "\n";
 		int* p = new int(5);
 	}
-	std::cout << i;
-	/*while (true)
+	std::cout << i;*/
+	//std::ifstream ifs("./file.txt");
+	//std::ofstream out("./pt.txt");
+	//if (!ifs) {
+	//	std::cout << "Proble";
+	//}
+	////if (!out) {
+	//	out << "S";
+	//	std::cout << "Problem";
+	////}
+	//	out.close();
+
+	while (true)
 	{
 		printWelcomeMessage();
 		std::cout << "[1] Start Game" << std::endl;
@@ -169,9 +325,11 @@ int main()
 		std::cout << "Enter your choice: ";
 		int choice;
 		std::cin >> choice;
-		if (choice == 1)
-			clearConsole(), printWelcomeMessage(),
+		if (choice == 1) {
+			clearConsole();
+			printWelcomeMessage();
 			StartGame();
+		}
 		else if (choice == 2)
 		{
 			clearConsole();
@@ -188,7 +346,7 @@ int main()
 		}
 
 	}
-	std::cout << "Hello World!\n";*/
+	std::cout << "Hello World!\n";
 
 
 }
