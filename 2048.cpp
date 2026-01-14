@@ -54,7 +54,7 @@ const int MaxSize = 10;
 const int MinSize = 4;
 const int MaxNameSize = 100;
 
-int getpow(int number) {
+int getpower(int number) {
 	int power = 0;
 	while (number > 1) {
 		number /= 2;
@@ -62,7 +62,7 @@ int getpow(int number) {
 	}
 	return power;
 }
-int CalculateScore(int board[MaxSize][MaxSize], int size)
+int CalculateScore(const int board[MaxSize][MaxSize], int size)
 {
 	int score = 0;
 	for (int i = 0; i < size; ++i)
@@ -74,19 +74,53 @@ int CalculateScore(int board[MaxSize][MaxSize], int size)
 	}
 	return score;
 }
-void printBoard(int board[MaxSize][MaxSize], int size)
-{
-	int score = CalculateScore(board, size);
-	for (int i = 0; i < size; ++i)
-	{
-		for (int j = 0; j < size; ++j)
-		{
-			std::cout << colors[getpow(board[i][j])] << board[i][j] << colors[0] << " ";
-		}
-		std::cout << std::endl;
+int digitCount(unsigned value) {
+	int count = 1;
+	while (value /= 10) {
+		count++;
 	}
-	std::cout << "Score: " << score << std::endl;
+	return count;
 }
+void printSpaces(int count) {
+	while (count--) {
+		std::cout << ' ';
+	}
+}
+int BOARD_TILE_WIDTH = 6;
+void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nickname) {
+	//clearConsole();
+	int score = CalculateScore(board, size);
+	std::cout << nickname << "'s score: " << score << '\n';
+
+	for (size_t row = 0; row < size; ++row) {
+		for (size_t col = 0; col < size - 1; ++col) {
+			unsigned tile = board[row][col];
+			int digits = digitCount(tile);
+
+			// when the default width is changed we board will
+			if (digits >= BOARD_TILE_WIDTH) {
+				BOARD_TILE_WIDTH += 2;
+			}
+
+			std::cout << colors[getpower(tile)] << tile << colors[0];
+			printSpaces(BOARD_TILE_WIDTH - digits);
+		}
+		std::cout << colors[getpower(board[row][size - 1])] << board[row][size - 1] << colors[0] << std::endl << std::endl;
+	}
+}
+//void printBoard(int board[MaxSize][MaxSize], int size)
+//{
+//	int score = CalculateScore(board, size);
+//	for (int i = 0; i < size; ++i)
+//	{
+//		for (int j = 0; j < size; ++j)
+//		{
+//			std::cout << colors[getpow(board[i][j])] << board[i][j] << colors[0] << " ";
+//		}
+//		std::cout << std::endl;
+//	}
+//	std::cout << "Score: " << score << std::endl;
+//}
 
 void placeRandomTile(int board[MaxSize][MaxSize], int size)
 {
@@ -245,6 +279,7 @@ void printWelcomeMessage()
 	std::cout << "        2048!           \n";
 	std::cout << "=========================\n";
 }
+
 void PrepareGame(int& size, char* name)
 {
 	std::cout << "Enter your name: (MAX 100 Characters) ";
@@ -258,6 +293,7 @@ void PrepareGame(int& size, char* name)
 		std::cin >> size;
 	}
 }
+
 bool IsGameOver(int board[MaxSize][MaxSize], int size)
 {
 	for (int i = 0; i < size; ++i)
@@ -286,6 +322,233 @@ bool IsGameOver(int board[MaxSize][MaxSize], int size)
 	}
 	return true;
 }
+
+const short MAX_FILENAME_LEN = 34;
+const char DELIMITER = ' ';
+
+const char DIRECTORY[] = "./leaderboards/leaderboard";
+const char TXT_EXTENSION[] = ".txt";
+
+void swap(unsigned& x, unsigned& y) {
+	unsigned temp = x;
+	x = y;
+	y = temp;
+}
+
+void copy(const char* from, char* to) {
+	if (from == nullptr || to == nullptr) {
+		return;
+	}
+	while (*from != '\0') {
+		*to = *from;
+		++to;
+		++from;
+	}
+	*to = '\0';
+}
+
+void swap(char* str1, char* str2) {
+	char temp[MaxNameSize];
+	copy(str1, temp);
+	copy(str2, str1);
+	copy(temp, str2);
+}
+void deallocateMatrix(char** matrix, size_t rows) {
+	for (size_t row = 0; row < rows; ++row) {
+		delete[] matrix[row];
+	}
+	delete[] matrix;
+}
+
+char toChar(size_t digit) {
+	if (digit > 9) {
+		return '0';
+	}
+	return (char)('0' + digit);
+}
+
+size_t strlen(const char* str) {
+	if (str == nullptr) {
+		return 0;
+	}
+	size_t len = 0;
+	while (str[len++] != '\0');
+	return --len;
+}
+
+void concat(char* str1, const char* str2) {
+	if (str1 == nullptr || str2 == nullptr) {
+		return;
+	}
+	size_t len = strlen(str1);
+	while (*str2 != '\0') {
+		str1[len++] = *str2;
+		++str2;
+	}
+	str1[len] = '\0';
+}
+
+const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
+
+void printLeaderboardMessage()
+{
+	std::cout << BOLDGREEN << "=========================\n";
+	std::cout << "      WELCOME TO        \n";
+	std::cout << "   2048 Leaderboards!   \n";
+	std::cout << "=========================\n"<<RESET;
+
+
+}
+
+char* getFilename(size_t dim) {
+	/*if (!isValid(dim)) {
+		return nullptr;
+	}*/
+	char* filename = new char[MAX_FILENAME_LEN]();
+	concat(filename, DIRECTORY);
+
+	char strDim[2];
+	strDim[0] = toChar(dim % 10);
+	strDim[1] = '\0';
+
+	concat(filename, strDim);
+	concat(filename, TXT_EXTENSION);
+	return filename;
+}
+
+void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& count) {
+	/*if (!isValid(dim)) {
+		return;
+	}*/
+	char* filename = getFilename(dim);
+
+	std::ifstream leaderboardFile(filename);
+
+	if (!leaderboardFile.is_open()) {
+		delete[] filename;
+		return;
+	}
+	count = 0;
+
+	/*char name[100];
+	leaderboardFile.getline(name, 100);
+
+	std::cout << name << std::endl;*/
+
+	while (leaderboardFile >> nicknames[count] >> scores[count]) {
+		++count;
+	}
+
+	// when the file is empty count is still 1
+	if (nicknames[0][0] == '\0') {
+		count = 0;
+	}
+
+	leaderboardFile.close();
+	delete[] filename;
+}
+
+void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned* scores, size_t& count) {
+	if (count == 0) {
+		copy(nickname, nicknames[count]);
+		scores[count] = score;
+		++count;
+		return;
+	}
+
+	if (count == MAX_NICKNAMES_SCORES_COUNT && score <= scores[count - 1]) {
+		return;
+	}
+
+	if (count == MAX_NICKNAMES_SCORES_COUNT) {
+		copy(nickname, nicknames[count - 1]);
+		scores[count - 1] = score;
+	}
+	else {
+		copy(nickname, nicknames[count]);
+		scores[count] = score;
+		++count;
+	}
+
+	int idx = (int)count - 1;
+	while (idx > 0 && scores[idx] > scores[idx - 1]) {
+		swap(scores[idx], scores[idx - 1]);
+		swap(nicknames[idx], nicknames[idx - 1]);
+		--idx;
+	}
+}
+
+char** allocateMatrix(size_t rows, size_t cols) {
+	char** matrix = new char* [rows];
+	for (size_t col = 0; col < rows; ++col) {
+		matrix[col] = new char[cols];
+	}
+	return matrix;
+}
+
+void appendLeaderboard(size_t dim, char* nickname, unsigned score) {
+	/*if (!isValid(dim)) {
+		return;
+	}*/
+
+	size_t count = 0;
+	char** nicknames = allocateMatrix(MAX_NICKNAMES_SCORES_COUNT, MaxNameSize);
+	unsigned* scores = new unsigned[MAX_NICKNAMES_SCORES_COUNT];
+
+	getNicknamesScores(dim, nicknames, scores, count);
+
+	addNicknameScore(nickname, score, nicknames, scores, count);
+
+	char* filename = getFilename(dim);
+	std::ofstream leaderboardFile(filename);
+
+	if (!leaderboardFile.is_open()) {
+		delete[] filename;
+		delete[] scores;
+		deallocateMatrix(nicknames, MAX_NICKNAMES_SCORES_COUNT);
+		return;
+	}
+
+	for (size_t idx = 0; idx < count - 1; ++idx) {
+		leaderboardFile << nicknames[idx] << DELIMITER << scores[idx] << DELIMITER;
+	}
+	leaderboardFile << nicknames[count - 1] << DELIMITER << scores[count - 1];
+	leaderboardFile.close();
+
+	delete[] filename;
+	delete[] scores;
+	deallocateMatrix(nicknames, MAX_NICKNAMES_SCORES_COUNT);
+}
+
+void printScores(const char** nicknames, const unsigned* scores, size_t count) {
+	for (size_t idx = 0; idx < count; ++idx) {
+		std::cout << idx + 1 << ". " << nicknames[idx] << "'s high score: " << scores[idx] << '\n';
+	}
+	std::cout << std::endl;
+}
+
+void showLeaderboard() {
+	//clearConsole();
+	size_t dim = 0;
+	std::cin >> dim;
+	size_t count = 0;
+
+	char** nicknames = allocateMatrix(MAX_NICKNAMES_SCORES_COUNT, MaxNameSize);
+	unsigned* scores = new unsigned[MAX_NICKNAMES_SCORES_COUNT];
+
+	getNicknamesScores(dim, nicknames, scores, count);
+
+	if (count == 0) {
+		std::cout << "Leaderboard is empty!\n";
+	}
+	else {
+		printScores((const char**)nicknames, (const unsigned*)scores, count);
+	}
+	std::cout << std::endl;
+	deallocateMatrix(nicknames, MAX_NICKNAMES_SCORES_COUNT);
+	delete[] scores;
+}
+//** end of leaderboard file code */
 void StartGame()
 {
 	int size = 0;
@@ -302,7 +565,7 @@ void StartGame()
 		placeRandomTile(board, size);
 		char move;
 		do {
-			printBoard(board, size);
+			printBoard(board, size, name);
 			if (IsGameOver(board, size)) {
 				ended = true;
 				break;
@@ -316,15 +579,22 @@ void StartGame()
 		} while (!MoveTiles(board, size, move));
 		if (quit) {
 			std::cout << "Thanks for playing, " << name << "!\n";
+			appendLeaderboard(size, name, CalculateScore(board, size));
+			//deleteBoard(board, size);
 			break;
 		}
 		if (ended) {
 			std::cout << "Game Over! No more moves possible.\n";
+			appendLeaderboard(size, name, CalculateScore(board, size));
 			break;
 		}
 	}
 	std::cout << BLUE << "hello world" << RESET << std::endl;
 }
+
+
+
+//** includes and defines from previous code snippets
 
 int main()
 {
@@ -362,7 +632,8 @@ int main()
 		else if (choice == 2)
 		{
 			clearConsole();
-			std::cout << "Leaderboard is empty!\n";
+			printLeaderboardMessage();
+			showLeaderboard();
 		}
 		else if (choice == 3)
 		{
