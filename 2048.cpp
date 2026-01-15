@@ -121,7 +121,60 @@ void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nick
 //	}
 //	std::cout << "Score: " << score << std::endl;
 //}
+int getMaxTile(const int board[MaxSize][MaxSize], int size)
+{
+	int maxTile = 0;
+	for (int i = 0; i < size; ++i) {
+		for (int j = 0; j < size; ++j) {
+			if (board[i][j] > maxTile) maxTile = board[i][j];
+		}
+	}
+	return maxTile;
+}
+int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
+{
+	// compute progress metric: power of largest tile
+	int maxTile = getMaxTile(board, size);
+	int maxPower = (maxTile > 1) ? getpower(maxTile) : 1; // treat empty board as low progress
 
+	// base probabilities
+	double p2 = 0.90;
+	double p4 = 0.09;
+	double p8 = 0.01;
+
+	// shift probabilities as maxPower increases
+	// tuning: when maxPower grows, transfer some probability from 2 -> 4 and 8
+	// example: for each power above 3 (tile >= 8) increase p4 and p8 slightly
+	if (maxPower > 3) {
+		int extraLevels = maxPower - 3;
+		// increase p4 by 0.03 per level, p8 by 0.01 per level
+		double inc4 = 0.03 * extraLevels;
+		double inc8 = 0.01 * extraLevels;
+
+		// clamp increases to reasonable maxima
+		if (inc4 > 0.30) inc4 = 0.30;
+		if (inc8 > 0.20) inc8 = 0.20;
+
+		// subtract from p2
+		double dec2 = inc4 + inc8;
+		p2 = p2 - dec2;
+		if (p2 < 0.0) p2 = 0.0;
+
+		p4 += inc4;
+		p8 += inc8;
+	}
+
+	// ensure sum is 1.0 (numerical safety)
+	double sum = p2 + p4 + p8;
+	if (sum <= 0.0) { p2 = 1.0; p4 = p8 = 0.0; sum = 1.0; }
+	p2 /= sum; p4 /= sum; p8 /= sum;
+
+	std::uniform_real_distribution<double> dist(0.0, 1.0);
+	double r = dist(randomGenerator);
+	if (r < p2) return 2;
+	if (r < p2 + p4) return 4;
+	return 8;
+}
 void placeRandomTile(int board[MaxSize][MaxSize], int size)
 {
 	srand(time(nullptr));
@@ -144,7 +197,7 @@ void placeRandomTile(int board[MaxSize][MaxSize], int size)
 		for (int j = 0; j < size; j++) {
 			if (board[i][j] == 0) {
 				if (target == 0) {
-					board[i][j] = (rand() % 10 == 0) ? 4 : 2;
+					board[i][j] = board[i][j] = chooseNewTileValue(board, size);
 					return;
 				}
 				target--;
@@ -388,16 +441,14 @@ void concat(char* str1, const char* str2) {
 	str1[len] = '\0';
 }
 
-const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
+const size_t MAX_NICKNAMES_SCORES_COUNT = 6;
 
 void printLeaderboardMessage()
 {
-	std::cout << BOLDGREEN << "=========================\n";
-	std::cout << "      WELCOME TO        \n";
-	std::cout << "   2048 Leaderboards!   \n";
-	std::cout << "=========================\n"<<RESET;
-
-
+	std::cout << BOLDGREEN << "===========================================\n";
+	std::cout << "	     WELCOME TO        \n";
+	std::cout << "	   2048 Leaderboards!   \n";
+	std::cout << "===========================================\n" << RESET;
 }
 
 char* getFilename(size_t dim) {
@@ -437,6 +488,9 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 
 	while (leaderboardFile >> nicknames[count] >> scores[count]) {
 		++count;
+		if (count == MAX_NICKNAMES_SCORES_COUNT - 1) {
+			break;
+		}
 	}
 
 	// when the file is empty count is still 1
@@ -528,9 +582,21 @@ void printScores(const char** nicknames, const unsigned* scores, size_t count) {
 }
 
 void showLeaderboard() {
-	//clearConsole();
+	clearConsole();
+	printLeaderboardMessage();
+	std::cout << "Leaderboards: \n\n" << BOLDCYAN;
+	for (int s = MinSize; s <= MaxSize; ++s) {
+		std::cout << "[" << s << "X" << s << "] ";
+	}
+	std::cout << BOLDYELLOW << "\n\nEnter board size to view leaderboard: " << RESET;
 	size_t dim = 0;
 	std::cin >> dim;
+	while (dim < MinSize || dim > MaxSize)
+	{
+		std::cout << BOLDRED << "Invalid size! Enter board size (4-10): " << RESET;
+		std::cin >> dim;
+	}
+	std::cout << std::endl;
 	size_t count = 0;
 
 	char** nicknames = allocateMatrix(MAX_NICKNAMES_SCORES_COUNT, MaxNameSize);
@@ -547,6 +613,17 @@ void showLeaderboard() {
 	std::cout << std::endl;
 	deallocateMatrix(nicknames, MAX_NICKNAMES_SCORES_COUNT);
 	delete[] scores;
+	std::cout << BOLDYELLOW << "What do you wish to do? \n" << RESET;
+	char choi;
+	std::cout << RED << "[1]" << CYAN << " Select another leaderboard\n";
+	std::cout << RED << "[Another Key]" << CYAN << " Return to Main Menu\n";
+	std::cout << "Enter your choice: " << RESET;
+	std::cin >> choi;
+
+	if (choi == '1') {
+		showLeaderboard();
+	}
+	clearConsole();
 }
 //** end of leaderboard file code */
 void StartGame()
@@ -622,7 +699,7 @@ int main()
 		std::cout << "[2] Leaderboard" << std::endl;
 		std::cout << "[3] Exit" << std::endl;
 		std::cout << "Enter your choice: ";
-		int choice;
+		int choice = 0;
 		std::cin >> choice;
 		if (choice == 1) {
 			clearConsole();
@@ -631,8 +708,6 @@ int main()
 		}
 		else if (choice == 2)
 		{
-			clearConsole();
-			printLeaderboardMessage();
 			showLeaderboard();
 		}
 		else if (choice == 3)
