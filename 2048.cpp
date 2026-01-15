@@ -1,12 +1,10 @@
 ﻿// 2048.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-//#include<ctime>
 #include <iostream>
 #include <fstream>
-#include <random>
-#include <cstdlib>
 #include <ctime>
+#include <cstdlib>
 
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"      /* Black */
@@ -47,12 +45,38 @@ const char* colors[] = {
 
 const int COLOR_COUNT = 16;
 
-
-std::mt19937 randomGenerator(std::random_device{}());
-
 const int MaxSize = 10;
 const int MinSize = 4;
 const int MaxNameSize = 100;
+
+const short MAX_FILENAME_LEN = 34;
+const char DELIMITER = ' ';
+int BOARD_TILE_WIDTH = 6;
+const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
+
+const char DIRECTORY[] = "./leaderboards/leaderboard";
+const char TXT_EXTENSION[] = ".txt";
+
+
+void clearInput() {
+	std::cin.clear();
+	std::cin.ignore(10000, '\n');
+}
+
+int safeReadInt(int min, int max) {
+	int value;
+	while (true) {
+		std::cin >> value;
+
+		if (!std::cin.fail() && value >= min && value <= max) {
+			clearInput();
+			return value;
+		}
+
+		std::cout << RED << "Invalid input! Try again: " << RESET;
+		clearInput();
+	}
+}
 
 int getpower(int number) {
 	int power = 0;
@@ -86,7 +110,6 @@ void printSpaces(int count) {
 		std::cout << ' ';
 	}
 }
-int BOARD_TILE_WIDTH = 6;
 void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nickname) {
 	//clearConsole();
 	int score = CalculateScore(board, size);
@@ -108,19 +131,6 @@ void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nick
 		std::cout << colors[getpower(board[row][size - 1])] << board[row][size - 1] << colors[0] << std::endl << std::endl;
 	}
 }
-//void printBoard(int board[MaxSize][MaxSize], int size)
-//{
-//	int score = CalculateScore(board, size);
-//	for (int i = 0; i < size; ++i)
-//	{
-//		for (int j = 0; j < size; ++j)
-//		{
-//			std::cout << colors[getpow(board[i][j])] << board[i][j] << colors[0] << " ";
-//		}
-//		std::cout << std::endl;
-//	}
-//	std::cout << "Score: " << score << std::endl;
-//}
 int getMaxTile(const int board[MaxSize][MaxSize], int size)
 {
 	int maxTile = 0;
@@ -133,29 +143,22 @@ int getMaxTile(const int board[MaxSize][MaxSize], int size)
 }
 int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
 {
-	// compute progress metric: power of largest tile
 	int maxTile = getMaxTile(board, size);
-	int maxPower = (maxTile > 1) ? getpower(maxTile) : 1; // treat empty board as low progress
+	int maxPower = (maxTile > 1) ? getpower(maxTile) : 1;
 
-	// base probabilities
 	double p2 = 0.90;
 	double p4 = 0.09;
 	double p8 = 0.01;
 
-	// shift probabilities as maxPower increases
-	// tuning: when maxPower grows, transfer some probability from 2 -> 4 and 8
-	// example: for each power above 3 (tile >= 8) increase p4 and p8 slightly
 	if (maxPower > 3) {
 		int extraLevels = maxPower - 3;
-		// increase p4 by 0.03 per level, p8 by 0.01 per level
+		
 		double inc4 = 0.03 * extraLevels;
 		double inc8 = 0.01 * extraLevels;
 
-		// clamp increases to reasonable maxima
 		if (inc4 > 0.30) inc4 = 0.30;
 		if (inc8 > 0.20) inc8 = 0.20;
 
-		// subtract from p2
 		double dec2 = inc4 + inc8;
 		p2 = p2 - dec2;
 		if (p2 < 0.0) p2 = 0.0;
@@ -164,23 +167,21 @@ int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
 		p8 += inc8;
 	}
 
-	// ensure sum is 1.0 (numerical safety)
 	double sum = p2 + p4 + p8;
 	if (sum <= 0.0) { p2 = 1.0; p4 = p8 = 0.0; sum = 1.0; }
 	p2 /= sum; p4 /= sum; p8 /= sum;
 
-	std::uniform_real_distribution<double> dist(0.0, 1.0);
-	double r = dist(randomGenerator);
+	
+	double r = (double)rand() / RAND_MAX;
+
 	if (r < p2) return 2;
 	if (r < p2 + p4) return 4;
 	return 8;
 }
 void placeRandomTile(int board[MaxSize][MaxSize], int size)
 {
-	srand(time(nullptr));
 	int emptyCount = 0;
 
-	// броим празните клетки
 	for (int i = 0; i < size; i++) {
 		for (int j = 0; j < size; j++) {
 			if (board[i][j] == 0)
@@ -188,9 +189,6 @@ void placeRandomTile(int board[MaxSize][MaxSize], int size)
 		}
 	}
 
-	// ако няма празни клетки
-
-	// избираме случайна празна позиция
 	int target = rand() % emptyCount;
 
 	for (int i = 0; i < size; i++) {
@@ -209,7 +207,6 @@ void clearConsole()
 {
 	system("cls");
 }
-
 bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 {
 	int curentboard[MaxSize][MaxSize] = { 0 };
@@ -324,7 +321,6 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	}
 	return false;
 }
-
 void printWelcomeMessage()
 {
 	std::cout << "=========================\n";
@@ -332,19 +328,12 @@ void printWelcomeMessage()
 	std::cout << "        2048!           \n";
 	std::cout << "=========================\n";
 }
-
 void PrepareGame(int& size, char* name)
 {
 	std::cout << "Enter your name: (MAX 100 Characters) ";
 	std::cin >> name;
 	std::cout << "Enter board size (4-10): ";
-	std::cin >> size;
-
-	while (size < MinSize || size > MaxSize)
-	{
-		std::cout << "Invalid size! Enter board size (4-10): ";
-		std::cin >> size;
-	}
+	size = safeReadInt(MinSize, MaxSize);
 }
 
 bool IsGameOver(int board[MaxSize][MaxSize], int size)
@@ -375,19 +364,11 @@ bool IsGameOver(int board[MaxSize][MaxSize], int size)
 	}
 	return true;
 }
-
-const short MAX_FILENAME_LEN = 34;
-const char DELIMITER = ' ';
-
-const char DIRECTORY[] = "./leaderboards/leaderboard";
-const char TXT_EXTENSION[] = ".txt";
-
 void swap(unsigned& x, unsigned& y) {
 	unsigned temp = x;
 	x = y;
 	y = temp;
 }
-
 void copy(const char* from, char* to) {
 	if (from == nullptr || to == nullptr) {
 		return;
@@ -399,7 +380,6 @@ void copy(const char* from, char* to) {
 	}
 	*to = '\0';
 }
-
 void swap(char* str1, char* str2) {
 	char temp[MaxNameSize];
 	copy(str1, temp);
@@ -412,14 +392,12 @@ void deallocateMatrix(char** matrix, size_t rows) {
 	}
 	delete[] matrix;
 }
-
 char toChar(size_t digit) {
 	if (digit > 9) {
 		return '0';
 	}
 	return (char)('0' + digit);
 }
-
 size_t strlen(const char* str) {
 	if (str == nullptr) {
 		return 0;
@@ -428,7 +406,6 @@ size_t strlen(const char* str) {
 	while (str[len++] != '\0');
 	return --len;
 }
-
 void concat(char* str1, const char* str2) {
 	if (str1 == nullptr || str2 == nullptr) {
 		return;
@@ -440,25 +417,19 @@ void concat(char* str1, const char* str2) {
 	}
 	str1[len] = '\0';
 }
-
 int myStrcmp(const char* a, const char* b)
 {
 	int i = 0;
 
 	while (a[i] != '\0' && b[i] != '\0') {
 		if (a[i] != b[i]) {
-			return a[i] - b[i]; // разлика по ASCII
+			return a[i] - b[i];
 		}
 		i++;
 	}
 
-	// ако едната дума е свършила
 	return a[i] - b[i];
 }
-
-
-const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
-
 void printLeaderboardMessage()
 {
 	std::cout << BOLDGREEN << "===========================================\n";
@@ -468,9 +439,6 @@ void printLeaderboardMessage()
 }
 
 char* getFilename(size_t dim) {
-	/*if (!isValid(dim)) {
-		return nullptr;
-	}*/
 	char* filename = new char[MAX_FILENAME_LEN]();
 	concat(filename, DIRECTORY);
 
@@ -484,9 +452,6 @@ char* getFilename(size_t dim) {
 }
 
 void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& count) {
-	/*if (!isValid(dim)) {
-		return;
-	}*/
 	char* filename = getFilename(dim);
 
 	std::ifstream leaderboardFile(filename);
@@ -497,11 +462,6 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 	}
 	count = 0;
 
-	/*char name[100];
-	leaderboardFile.getline(name, 100);
-
-	std::cout << name << std::endl;*/
-
 	while (leaderboardFile >> nicknames[count] >> scores[count]) {
 		++count;
 		if (count == MAX_NICKNAMES_SCORES_COUNT) {
@@ -509,7 +469,6 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 		}
 	}
 
-	// when the file is empty count is still 1
 	if (nicknames[0][0] == '\0') {
 		count = 0;
 	}
@@ -518,13 +477,10 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 	delete[] filename;
 }
 void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned* scores, size_t& count) {
-	// check if nickname already exists
 	for (size_t i = 0; i < count; ++i) {
 		if (myStrcmp(nickname, nicknames[i]) == 0) {
-			// existing entry found
 			if (score > scores[i]) {
 				scores[i] = score;
-				// bubble up to keep descending order
 				size_t idx = i;
 				while (idx > 0 && scores[idx] > scores[idx - 1]) {
 					swap(scores[idx], scores[idx - 1]);
@@ -532,12 +488,10 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 					--idx;
 				}
 			}
-			// if new score is not higher, do nothing
 			return;
 		}
 	}
 
-	// not found — insert new entry
 	if (count == 0) {
 		copy(nickname, nicknames[count]);
 		scores[count] = score;
@@ -546,12 +500,10 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 	}
 
 	if (count == MAX_NICKNAMES_SCORES_COUNT && score <= scores[count - 1]) {
-		// list full and score not high enough to enter
 		return;
 	}
 
 	if (count == MAX_NICKNAMES_SCORES_COUNT) {
-		// replace lowest
 		copy(nickname, nicknames[count - 1]);
 		scores[count - 1] = score;
 	}
@@ -561,7 +513,6 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 		++count;
 	}
 
-	// bubble up new entry to keep descending order
 	int idx = (int)count - 1;
 	while (idx > 0 && scores[idx] > scores[idx - 1]) {
 		swap(scores[idx], scores[idx - 1]);
@@ -569,35 +520,6 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 		--idx;
 	}
 }
-//void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned* scores, size_t& count) {
-//	if (count == 0) {
-//		copy(nickname, nicknames[count]);
-//		scores[count] = score;
-//		++count;
-//		return;
-//	}
-//
-//	if (count == MAX_NICKNAMES_SCORES_COUNT && score <= scores[count - 1]) {
-//		return;
-//	}
-//
-//	if (count == MAX_NICKNAMES_SCORES_COUNT) {
-//		copy(nickname, nicknames[count - 1]);
-//		scores[count - 1] = score;
-//	}
-//	else {
-//		copy(nickname, nicknames[count]);
-//		scores[count] = score;
-//		++count;
-//	}
-//
-//	int idx = (int)count - 1;
-//	while (idx > 0 && scores[idx] > scores[idx - 1]) {
-//		swap(scores[idx], scores[idx - 1]);
-//		swap(nicknames[idx], nicknames[idx - 1]);
-//		--idx;
-//	}
-//}
 
 char** allocateMatrix(size_t rows, size_t cols) {
 	char** matrix = new char* [rows];
@@ -608,9 +530,6 @@ char** allocateMatrix(size_t rows, size_t cols) {
 }
 
 void appendLeaderboard(size_t dim, char* nickname, unsigned score) {
-	/*if (!isValid(dim)) {
-		return;
-	}*/
 
 	size_t count = 0;
 	char** nicknames = allocateMatrix(MAX_NICKNAMES_SCORES_COUNT, MaxNameSize);
@@ -657,12 +576,7 @@ void showLeaderboard() {
 	}
 	std::cout << BOLDYELLOW << "\n\nEnter board size to view leaderboard: " << RESET;
 	size_t dim = 0;
-	std::cin >> dim;
-	while (dim < MinSize || dim > MaxSize)
-	{
-		std::cout << BOLDRED << "Invalid size! Enter board size (4-10): " << RESET;
-		std::cin >> dim;
-	}
+	dim = safeReadInt(4, 10);
 	std::cout << std::endl;
 	size_t count = 0;
 
@@ -681,24 +595,28 @@ void showLeaderboard() {
 	deallocateMatrix(nicknames, MAX_NICKNAMES_SCORES_COUNT);
 	delete[] scores;
 	std::cout << BOLDYELLOW << "What do you wish to do? \n" << RESET;
-	char choi;
 	std::cout << RED << "[1]" << CYAN << " Select another leaderboard\n";
 	std::cout << RED << "[Another Key]" << CYAN << " Return to Main Menu\n";
 	std::cout << "Enter your choice: " << RESET;
-	std::cin >> choi;
+	char choi;
+	while (!(std::cin >> choi)) {
+		std::cin.clear();
+		std::cin.ignore(10000, '\n');
+	}
+	std::cin.ignore(10000, '\n');
 
 	if (choi == '1') {
 		showLeaderboard();
 	}
-	clearConsole();
+	else {
+		clearConsole();
+	}	
 }
-//** end of leaderboard file code */
 void StartGame()
 {
 	int size = 0;
 	char name[MaxNameSize] = {};
 	PrepareGame(size, name);
-	//size = 2;
 	int board[MaxSize][MaxSize] = { 0 };
 	int full = 0;
 	bool quit = false;
@@ -731,7 +649,6 @@ void StartGame()
 		if (quit) {
 			std::cout << "Thanks for playing, " << name << "!\n";
 			appendLeaderboard(size, name, CalculateScore(board, size));
-			//deleteBoard(board, size);
 			break;
 		}
 		if (ended) {
@@ -740,32 +657,11 @@ void StartGame()
 			break;
 		}
 	}
-	std::cout << BLUE << "hello world" << RESET << std::endl;
 }
-
-
-
-//** includes and defines from previous code snippets
 
 int main()
 {
-	/*int i;
-	for (i = 0; i < 900000000; i++) {
-		std::cout << i << "\n";
-		int* p = new int(5);
-	}
-	std::cout << i;*/
-	//std::ifstream ifs("./file.txt");
-	//std::ofstream out("./pt.txt");
-	//if (!ifs) {
-	//	std::cout << "Proble";
-	//}
-	////if (!out) {
-	//	out << "S";
-	//	std::cout << "Problem";
-	////}
-	//	out.close();
-
+	srand(time(nullptr));
 	while (true)
 	{
 		printWelcomeMessage();
@@ -773,29 +669,30 @@ int main()
 		std::cout << "[2] Leaderboard" << std::endl;
 		std::cout << "[3] Exit" << std::endl;
 		std::cout << "Enter your choice: ";
-		int choice = 0;
-		std::cin >> choice;
-		if (choice == 1) {
+		char choice;
+		while (!(std::cin >> choice)) {
+			std::cin.clear();
+			std::cin.ignore(10000, '\n');
+		}
+		std::cin.ignore(10000, '\n');
+
+		if (choice == '1') {
 			clearConsole();
 			printWelcomeMessage();
 			StartGame();
 		}
-		else if (choice == 2)
+		else if (choice == '2')
 		{
 			showLeaderboard();
 		}
-		else if (choice == 3)
+		else if (choice == '3')
 		{
 			return 0;
 		}
 		else
 		{
 			clearConsole();
-			std::cout << "Invalid choice! Try again.\n";
+			std::cout << RED << "Invalid input! Try again!\n " << RESET;
 		}
-
 	}
-	std::cout << "Hello World!\n";
-
-
 }
