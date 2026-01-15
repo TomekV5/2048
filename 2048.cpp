@@ -441,7 +441,23 @@ void concat(char* str1, const char* str2) {
 	str1[len] = '\0';
 }
 
-const size_t MAX_NICKNAMES_SCORES_COUNT = 6;
+int myStrcmp(const char* a, const char* b)
+{
+	int i = 0;
+
+	while (a[i] != '\0' && b[i] != '\0') {
+		if (a[i] != b[i]) {
+			return a[i] - b[i]; // разлика по ASCII
+		}
+		i++;
+	}
+
+	// ако едната дума е свършила
+	return a[i] - b[i];
+}
+
+
+const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
 
 void printLeaderboardMessage()
 {
@@ -488,7 +504,7 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 
 	while (leaderboardFile >> nicknames[count] >> scores[count]) {
 		++count;
-		if (count == MAX_NICKNAMES_SCORES_COUNT - 1) {
+		if (count == MAX_NICKNAMES_SCORES_COUNT) {
 			break;
 		}
 	}
@@ -501,8 +517,27 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 	leaderboardFile.close();
 	delete[] filename;
 }
-
 void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned* scores, size_t& count) {
+	// check if nickname already exists
+	for (size_t i = 0; i < count; ++i) {
+		if (myStrcmp(nickname, nicknames[i]) == 0) {
+			// existing entry found
+			if (score > scores[i]) {
+				scores[i] = score;
+				// bubble up to keep descending order
+				size_t idx = i;
+				while (idx > 0 && scores[idx] > scores[idx - 1]) {
+					swap(scores[idx], scores[idx - 1]);
+					swap(nicknames[idx], nicknames[idx - 1]);
+					--idx;
+				}
+			}
+			// if new score is not higher, do nothing
+			return;
+		}
+	}
+
+	// not found — insert new entry
 	if (count == 0) {
 		copy(nickname, nicknames[count]);
 		scores[count] = score;
@@ -511,10 +546,12 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 	}
 
 	if (count == MAX_NICKNAMES_SCORES_COUNT && score <= scores[count - 1]) {
+		// list full and score not high enough to enter
 		return;
 	}
 
 	if (count == MAX_NICKNAMES_SCORES_COUNT) {
+		// replace lowest
 		copy(nickname, nicknames[count - 1]);
 		scores[count - 1] = score;
 	}
@@ -524,6 +561,7 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 		++count;
 	}
 
+	// bubble up new entry to keep descending order
 	int idx = (int)count - 1;
 	while (idx > 0 && scores[idx] > scores[idx - 1]) {
 		swap(scores[idx], scores[idx - 1]);
@@ -531,6 +569,35 @@ void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned
 		--idx;
 	}
 }
+//void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned* scores, size_t& count) {
+//	if (count == 0) {
+//		copy(nickname, nicknames[count]);
+//		scores[count] = score;
+//		++count;
+//		return;
+//	}
+//
+//	if (count == MAX_NICKNAMES_SCORES_COUNT && score <= scores[count - 1]) {
+//		return;
+//	}
+//
+//	if (count == MAX_NICKNAMES_SCORES_COUNT) {
+//		copy(nickname, nicknames[count - 1]);
+//		scores[count - 1] = score;
+//	}
+//	else {
+//		copy(nickname, nicknames[count]);
+//		scores[count] = score;
+//		++count;
+//	}
+//
+//	int idx = (int)count - 1;
+//	while (idx > 0 && scores[idx] > scores[idx - 1]) {
+//		swap(scores[idx], scores[idx - 1]);
+//		swap(nicknames[idx], nicknames[idx - 1]);
+//		--idx;
+//	}
+//}
 
 char** allocateMatrix(size_t rows, size_t cols) {
 	char** matrix = new char* [rows];
@@ -641,7 +708,13 @@ void StartGame()
 		clearConsole();
 		placeRandomTile(board, size);
 		char move;
+		int wrongMoves = 0;
 		do {
+			if (wrongMoves > 0)
+			{
+				clearConsole();
+				std::cout << RED << "Invalid move! Try again.\n" << RESET;
+			}
 			printBoard(board, size, name);
 			if (IsGameOver(board, size)) {
 				ended = true;
@@ -653,6 +726,7 @@ void StartGame()
 				quit = true;
 				break;
 			}
+			wrongMoves++;
 		} while (!MoveTiles(board, size, move));
 		if (quit) {
 			std::cout << "Thanks for playing, " << name << "!\n";
