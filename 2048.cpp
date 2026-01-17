@@ -23,9 +23,9 @@
 #define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
 #define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+#define ORANGE "\033[38;5;208m" /* ORANGE */
 const char* colors[] = {
 	RESET,
-	/*BLACK,*/
 	RED,
 	GREEN,
 	YELLOW,
@@ -33,6 +33,7 @@ const char* colors[] = {
 	MAGENTA,
 	CYAN,
 	WHITE,
+	ORANGE,
 	BOLDBLACK,
 	BOLDRED,
 	BOLDGREEN,
@@ -43,10 +44,10 @@ const char* colors[] = {
 	BOLDWHITE
 };
 
-const int COLOR_COUNT = 16;
+const int COLOR_COUNT = 17;
 
-const int MaxSize = 10;
 const int MinSize = 4;
+const int MaxSize = 10;
 const int MaxNameSize = 100;
 
 const short MAX_FILENAME_LEN = 34;
@@ -110,27 +111,37 @@ void printSpaces(int count) {
 		std::cout << ' ';
 	}
 }
-void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nickname) {
-	//clearConsole();
+void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nickname)
+{
 	int score = CalculateScore(board, size);
-	std::cout << nickname << "'s score: " << score << '\n';
+	std::cout << GREEN << nickname << RESET << "'s score: " << score << '\n';
+	std::cout << ORANGE << "===========================================\n" << RESET;
 
-	for (size_t row = 0; row < size; ++row) {
-		for (size_t col = 0; col < size - 1; ++col) {
+	for (size_t row = 0; row < size; ++row)
+	{
+		for (size_t col = 0; col < size; ++col)
+		{
 			unsigned tile = board[row][col];
 			int digits = digitCount(tile);
 
-			// when the default width is changed we board will
 			if (digits >= BOARD_TILE_WIDTH) {
 				BOARD_TILE_WIDTH += 2;
 			}
 
-			std::cout << colors[getpower(tile)] << tile << colors[0];
+			const char* color = RESET;
+
+			if (tile != 0) {
+				int index = getpower(tile) % COLOR_COUNT;
+				color = colors[index];
+			}
+
+			std::cout << color << tile << RESET;
 			printSpaces(BOARD_TILE_WIDTH - digits);
 		}
-		std::cout << colors[getpower(board[row][size - 1])] << board[row][size - 1] << colors[0] << std::endl << std::endl;
+		std::cout << "\n\n";
 	}
 }
+
 int getMaxTile(const int board[MaxSize][MaxSize], int size)
 {
 	int maxTile = 0;
@@ -152,7 +163,7 @@ int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
 
 	if (maxPower > 3) {
 		int extraLevels = maxPower - 3;
-		
+
 		double inc4 = 0.03 * extraLevels;
 		double inc8 = 0.01 * extraLevels;
 
@@ -171,7 +182,7 @@ int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
 	if (sum <= 0.0) { p2 = 1.0; p4 = p8 = 0.0; sum = 1.0; }
 	p2 /= sum; p4 /= sum; p8 /= sum;
 
-	
+
 	double r = (double)rand() / RAND_MAX;
 
 	if (r < p2) return 2;
@@ -323,16 +334,16 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 }
 void printWelcomeMessage()
 {
-	std::cout << "=========================\n";
-	std::cout << "      WELCOME TO        \n";
-	std::cout << "        2048!           \n";
-	std::cout << "=========================\n";
+	std::cout << ORANGE << "===========================================\n";
+	std::cout << "	     WELCOME TO        \n";
+	std::cout << "		2048!   \n";
+	std::cout << "===========================================\n" << RESET;
 }
 void PrepareGame(int& size, char* name)
 {
-	std::cout << "Enter your name: (MAX 100 Characters) ";
+	std::cout << BOLDYELLOW << "Enter your name " << RED << "(MAX 100 Characters): " << RESET;
 	std::cin >> name;
-	std::cout << "Enter board size (4-10): ";
+	std::cout << BOLDYELLOW << "Enter board size " << RED << "(4-10): " << RESET;
 	size = safeReadInt(MinSize, MaxSize);
 }
 
@@ -442,9 +453,11 @@ char* getFilename(size_t dim) {
 	char* filename = new char[MAX_FILENAME_LEN]();
 	concat(filename, DIRECTORY);
 
-	char strDim[2];
+	char strDim[4];
 	strDim[0] = toChar(dim % 10);
-	strDim[1] = '\0';
+	strDim[1] = 'X';
+	strDim[2] = toChar(dim % 10);
+	strDim[3] = '\0';
 
 	concat(filename, strDim);
 	concat(filename, TXT_EXTENSION);
@@ -586,18 +599,17 @@ void showLeaderboard() {
 	getNicknamesScores(dim, nicknames, scores, count);
 
 	if (count == 0) {
-		std::cout << "Leaderboard is empty!\n";
+		std::cout << MAGENTA << "Leaderboard is empty!\n" << RESET;
 	}
 	else {
 		printScores((const char**)nicknames, (const unsigned*)scores, count);
 	}
-	std::cout << std::endl;
 	deallocateMatrix(nicknames, MAX_NICKNAMES_SCORES_COUNT);
 	delete[] scores;
 	std::cout << BOLDYELLOW << "What do you wish to do? \n" << RESET;
 	std::cout << RED << "[1]" << CYAN << " Select another leaderboard\n";
 	std::cout << RED << "[Another Key]" << CYAN << " Return to Main Menu\n";
-	std::cout << "Enter your choice: " << RESET;
+	std::cout << BOLDYELLOW << "Enter your choice: " << RESET;
 	char choi;
 	while (!(std::cin >> choi)) {
 		std::cin.clear();
@@ -610,10 +622,12 @@ void showLeaderboard() {
 	}
 	else {
 		clearConsole();
-	}	
+	}
 }
 void StartGame()
 {
+	clearConsole();
+	printWelcomeMessage();
 	int size = 0;
 	char name[MaxNameSize] = {};
 	PrepareGame(size, name);
@@ -665,10 +679,10 @@ int main()
 	while (true)
 	{
 		printWelcomeMessage();
-		std::cout << "[1] Start Game" << std::endl;
-		std::cout << "[2] Leaderboard" << std::endl;
-		std::cout << "[3] Exit" << std::endl;
-		std::cout << "Enter your choice: ";
+		std::cout << RED << "[1]" << CYAN << " Start Game" << std::endl;
+		std::cout << RED << "[2]" << CYAN << " Leaderboard" << std::endl;
+		std::cout << RED << "[3]" << CYAN << " Exit" << std::endl;
+		std::cout << BOLDYELLOW << "Enter your choice: " << RESET;
 		char choice;
 		while (!(std::cin >> choice)) {
 			std::cin.clear();
@@ -676,9 +690,8 @@ int main()
 		}
 		std::cin.ignore(10000, '\n');
 
-		if (choice == '1') {
-			clearConsole();
-			printWelcomeMessage();
+		if (choice == '1')
+		{
 			StartGame();
 		}
 		else if (choice == '2')
@@ -687,7 +700,7 @@ int main()
 		}
 		else if (choice == '3')
 		{
-			return 0;
+			break;
 		}
 		else
 		{
