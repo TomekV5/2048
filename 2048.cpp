@@ -63,7 +63,7 @@ const int MinSize = 4;
 const int MaxSize = 10;
 const int MaxNameSize = 100;
 
-const short MAX_FILENAME_LEN = 34;
+const short MAX_FILENAME_LEN = 35;
 const char DELIMITER = ' ';
 int BOARD_TILE_WIDTH = 6;
 const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
@@ -501,11 +501,12 @@ char* getFilename(size_t dim) {
 	char* filename = new char[MAX_FILENAME_LEN]();
 	concat(filename, DIRECTORY);
 
-	char strDim[4];
-	strDim[0] = toChar(dim % 10);
-	strDim[1] = 'X';
-	strDim[2] = toChar(dim % 10);
-	strDim[3] = '\0';
+	char strDim[5];
+	strDim[0] = '_';
+	strDim[1] = toChar(dim % 10);
+	strDim[2] = 'X';
+	strDim[3] = toChar(dim % 10);
+	strDim[4] = '\0';
 
 	concat(filename, strDim);
 	concat(filename, TXT_EXTENSION);
