@@ -14,7 +14,7 @@ ___
 ___
 1. Create a Visual Studio project 
 2. Copy the code from 2048.cpp to your own project main file
-3. Create a folder "leaderboards"
+3. Create a folder "leaderboards" where your project file is
 4. Run the project
 - If you don't download the text files with the curent leaderboards from this repository normaly the program is creating them for you.
 ### Usage
