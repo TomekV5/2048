@@ -316,33 +316,34 @@ void placeRandomTile(int board[MaxSize][MaxSize], int size)
 bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 {
 	int currentBoard[MaxSize][MaxSize];
-	for (int r = 0; r < size; r++)
-		for (int c = 0; c < size; c++)
-			currentBoard[r][c] = board[r][c];
+	for (int row = 0; row < size; row++) {
+		for (int col = 0; col < size; col++) {
+			currentBoard[row][col] = board[row][col];
+		}
+	}
 
 	if (direction == 'w' || direction == 'W') // Up
 	{
-		for (int j = 0; j < size; j++)
+		for (int col = 0; col < size; col++)
 		{
 			unsigned mergedMask = 0;
-			for (int i = 1; i < size; i++)
+			for (int row = 1; row < size; row++)
 			{
-				if (board[i][j] == 0) continue;
-				int row = i;
+				if (board[row][col] == 0) continue;
 
-				while (row > 0 && board[row - 1][j] == 0)
+				while (row > 0 && board[row - 1][col] == 0)
 				{
-					board[row - 1][j] = board[row][j];
-					board[row][j] = 0;
+					board[row - 1][col] = board[row][col];
+					board[row][col] = 0;
 					row--;
 				}
 
 				if (row > 0 &&
-					board[row - 1][j] == board[row][j] &&
+					board[row - 1][col] == board[row][col] &&
 					!(mergedMask & (1u << (row - 1))))
 				{
-					board[row - 1][j] *= 2;
-					board[row][j] = 0;
+					board[row - 1][col] *= 2;
+					board[row][col] = 0;
 					mergedMask |= (1u << (row - 1));
 				}
 			}
@@ -350,27 +351,26 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	}
 	else if (direction == 's' || direction == 'S') // Down
 	{
-		for (int j = 0; j < size; j++)
+		for (int col = 0; col < size; col++)
 		{
 			unsigned mergedMask = 0;
-			for (int i = size - 2; i >= 0; i--)
+			for (int row = size - 2; row >= 0; row--)
 			{
-				if (board[i][j] == 0) continue;
-				int row = i;
+				if (board[row][col] == 0) continue;
 
-				while (row < size - 1 && board[row + 1][j] == 0)
+				while (row < size - 1 && board[row + 1][col] == 0)
 				{
-					board[row + 1][j] = board[row][j];
-					board[row][j] = 0;
+					board[row + 1][col] = board[row][col];
+					board[row][col] = 0;
 					row++;
 				}
 
 				if (row < size - 1 &&
-					board[row + 1][j] == board[row][j] &&
+					board[row + 1][col] == board[row][col] &&
 					!(mergedMask & (1u << (row + 1))))
 				{
-					board[row + 1][j] *= 2;
-					board[row][j] = 0;
+					board[row + 1][col] *= 2;
+					board[row][col] = 0;
 					mergedMask |= (1u << (row + 1));
 				}
 			}
@@ -378,27 +378,26 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	}
 	else if (direction == 'a' || direction == 'A') // Left
 	{
-		for (int i = 0; i < size; i++)
+		for (int row = 0; row < size; row++)
 		{
 			unsigned mergedMask = 0;
-			for (int j = 1; j < size; j++)
+			for (int col = 1; col < size; col++)
 			{
-				if (board[i][j] == 0) continue;
-				int col = j;
+				if (board[row][col] == 0) continue;
 
-				while (col > 0 && board[i][col - 1] == 0)
+				while (col > 0 && board[row][col - 1] == 0)
 				{
-					board[i][col - 1] = board[i][col];
-					board[i][col] = 0;
+					board[row][col - 1] = board[row][col];
+					board[row][col] = 0;
 					col--;
 				}
 
 				if (col > 0 &&
-					board[i][col - 1] == board[i][col] &&
+					board[row][col - 1] == board[row][col] &&
 					!(mergedMask & (1u << (col - 1))))
 				{
-					board[i][col - 1] *= 2;
-					board[i][col] = 0;
+					board[row][col - 1] *= 2;
+					board[row][col] = 0;
 					mergedMask |= (1u << (col - 1));
 				}
 			}
@@ -406,27 +405,26 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	}
 	else if (direction == 'd' || direction == 'D') // Right
 	{
-		for (int i = 0; i < size; i++)
+		for (int row = 0; row < size; row++)
 		{
 			unsigned mergedMask = 0;
-			for (int j = size - 2; j >= 0; j--)
+			for (int col = size - 2; col >= 0; col--)
 			{
-				if (board[i][j] == 0) continue;
-				int col = j;
+				if (board[row][col] == 0) continue;
 
-				while (col < size - 1 && board[i][col + 1] == 0)
+				while (col < size - 1 && board[row][col + 1] == 0)
 				{
-					board[i][col + 1] = board[i][col];
-					board[i][col] = 0;
+					board[row][col + 1] = board[row][col];
+					board[row][col] = 0;
 					col++;
 				}
 
 				if (col < size - 1 &&
-					board[i][col + 1] == board[i][col] &&
+					board[row][col + 1] == board[row][col] &&
 					!(mergedMask & (1u << (col + 1))))
 				{
-					board[i][col + 1] *= 2;
-					board[i][col] = 0;
+					board[row][col + 1] *= 2;
+					board[row][col] = 0;
 					mergedMask |= (1u << (col + 1));
 				}
 			}
@@ -675,6 +673,7 @@ void showLeaderboard() {
 		clearConsole();
 	}
 }
+
 //Game loop
 void StartGame()
 {
