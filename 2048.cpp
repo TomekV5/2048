@@ -1,5 +1,18 @@
-﻿// 2048.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+﻿/**
+*
+* Solution to course project # 8
+* Introduction to programming course
+* Faculty of Mathematics and Informatics of Sofia University
+* Winter semester 2025/2026
+*
+* @author Vasil Tomov
+* @idnumber 3MI0600663
+* @compiler VC
+*
+* <code file>
+*
+*/
+
 
 #include <iostream>
 #include <fstream>
@@ -58,6 +71,85 @@ const size_t MAX_NICKNAMES_SCORES_COUNT = 5;
 const char DIRECTORY[] = "./leaderboards/leaderboard";
 const char TXT_EXTENSION[] = ".txt";
 
+//Helper functions
+void clearConsole()
+{
+	system("cls");
+}
+
+void swap(unsigned& x, unsigned& y) {
+	unsigned temp = x;
+	x = y;
+	y = temp;
+}
+
+void copy(const char* from, char* to) {
+	if (from == nullptr || to == nullptr) {
+		return;
+	}
+	while (*from != '\0') {
+		*to = *from;
+		++to;
+		++from;
+	}
+	*to = '\0';
+}
+
+void swap(char* str1, char* str2) {
+	char temp[MaxNameSize];
+	copy(str1, temp);
+	copy(str2, str1);
+	copy(temp, str2);
+}
+
+void deallocateMatrix(char** matrix, size_t rows) {
+	for (size_t row = 0; row < rows; ++row) {
+		delete[] matrix[row];
+	}
+	delete[] matrix;
+}
+
+char toChar(size_t digit) {
+	if (digit > 9) {
+		return '0';
+	}
+	return (char)('0' + digit);
+}
+
+size_t strlen(const char* str) {
+	if (str == nullptr) {
+		return 0;
+	}
+	size_t len = 0;
+	while (str[len++] != '\0');
+	return --len;
+}
+
+void concat(char* str1, const char* str2) {
+	if (str1 == nullptr || str2 == nullptr) {
+		return;
+	}
+	size_t len = strlen(str1);
+	while (*str2 != '\0') {
+		str1[len++] = *str2;
+		++str2;
+	}
+	str1[len] = '\0';
+}
+
+int myStrcmp(const char* a, const char* b)
+{
+	int i = 0;
+
+	while (a[i] != '\0' && b[i] != '\0') {
+		if (a[i] != b[i]) {
+			return a[i] - b[i];
+		}
+		i++;
+	}
+
+	return a[i] - b[i];
+}
 
 void clearInput() {
 	std::cin.clear();
@@ -87,6 +179,7 @@ int getpower(int number) {
 	}
 	return power;
 }
+
 int CalculateScore(const int board[MaxSize][MaxSize], int size)
 {
 	int score = 0;
@@ -99,6 +192,7 @@ int CalculateScore(const int board[MaxSize][MaxSize], int size)
 	}
 	return score;
 }
+
 int digitCount(unsigned value) {
 	int count = 1;
 	while (value /= 10) {
@@ -106,15 +200,17 @@ int digitCount(unsigned value) {
 	}
 	return count;
 }
+
 void printSpaces(int count) {
 	while (count--) {
 		std::cout << ' ';
 	}
 }
+
 void printBoard(const int board[MaxSize][MaxSize], size_t size, const char* nickname)
 {
 	int score = CalculateScore(board, size);
-	std::cout << GREEN << nickname << RESET << "'s score: " << score << '\n';
+	std::cout << GREEN << nickname << RESET << "'s score: " << YELLOW << score << RESET << '\n';
 	std::cout << ORANGE << "===========================================\n" << RESET;
 
 	for (size_t row = 0; row < size; ++row)
@@ -152,6 +248,7 @@ int getMaxTile(const int board[MaxSize][MaxSize], int size)
 	}
 	return maxTile;
 }
+
 int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
 {
 	int maxTile = getMaxTile(board, size);
@@ -189,6 +286,7 @@ int chooseNewTileValue(const int board[MaxSize][MaxSize], int size)
 	if (r < p2 + p4) return 4;
 	return 8;
 }
+
 void placeRandomTile(int board[MaxSize][MaxSize], int size)
 {
 	int emptyCount = 0;
@@ -214,39 +312,38 @@ void placeRandomTile(int board[MaxSize][MaxSize], int size)
 		}
 	}
 }
-void clearConsole()
-{
-	system("cls");
-}
+
 bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 {
-	int curentboard[MaxSize][MaxSize] = { 0 };
-	for (int r = 0; r < size; r++) {
-		for (int c = 0; c < size; c++) {
-			curentboard[r][c] = board[r][c];
-		}
-	}
+	int currentBoard[MaxSize][MaxSize];
+	for (int r = 0; r < size; r++)
+		for (int c = 0; c < size; c++)
+			currentBoard[r][c] = board[r][c];
 
 	if (direction == 'w' || direction == 'W') // Up
 	{
-		for (int j = 0; j < size; j++) // column
+		for (int j = 0; j < size; j++)
 		{
-			bool merged[MaxSize] = { false }; // track merged tiles
+			unsigned mergedMask = 0;
 			for (int i = 1; i < size; i++)
 			{
 				if (board[i][j] == 0) continue;
 				int row = i;
+
 				while (row > 0 && board[row - 1][j] == 0)
 				{
 					board[row - 1][j] = board[row][j];
 					board[row][j] = 0;
 					row--;
 				}
-				if (row > 0 && board[row - 1][j] == board[row][j] && !merged[row - 1])
+
+				if (row > 0 &&
+					board[row - 1][j] == board[row][j] &&
+					!(mergedMask & (1u << (row - 1))))
 				{
 					board[row - 1][j] *= 2;
 					board[row][j] = 0;
-					merged[row - 1] = true;
+					mergedMask |= (1u << (row - 1));
 				}
 			}
 		}
@@ -255,22 +352,26 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	{
 		for (int j = 0; j < size; j++)
 		{
-			bool merged[MaxSize] = { false };
+			unsigned mergedMask = 0;
 			for (int i = size - 2; i >= 0; i--)
 			{
 				if (board[i][j] == 0) continue;
 				int row = i;
+
 				while (row < size - 1 && board[row + 1][j] == 0)
 				{
 					board[row + 1][j] = board[row][j];
 					board[row][j] = 0;
 					row++;
 				}
-				if (row < size - 1 && board[row + 1][j] == board[row][j] && !merged[row + 1])
+
+				if (row < size - 1 &&
+					board[row + 1][j] == board[row][j] &&
+					!(mergedMask & (1u << (row + 1))))
 				{
 					board[row + 1][j] *= 2;
 					board[row][j] = 0;
-					merged[row + 1] = true;
+					mergedMask |= (1u << (row + 1));
 				}
 			}
 		}
@@ -279,22 +380,26 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	{
 		for (int i = 0; i < size; i++)
 		{
-			bool merged[MaxSize] = { false };
+			unsigned mergedMask = 0;
 			for (int j = 1; j < size; j++)
 			{
 				if (board[i][j] == 0) continue;
 				int col = j;
+
 				while (col > 0 && board[i][col - 1] == 0)
 				{
 					board[i][col - 1] = board[i][col];
 					board[i][col] = 0;
 					col--;
 				}
-				if (col > 0 && board[i][col - 1] == board[i][col] && !merged[col - 1])
+
+				if (col > 0 &&
+					board[i][col - 1] == board[i][col] &&
+					!(mergedMask & (1u << (col - 1))))
 				{
 					board[i][col - 1] *= 2;
 					board[i][col] = 0;
-					merged[col - 1] = true;
+					mergedMask |= (1u << (col - 1));
 				}
 			}
 		}
@@ -303,42 +408,39 @@ bool MoveTiles(int board[MaxSize][MaxSize], int size, char direction)
 	{
 		for (int i = 0; i < size; i++)
 		{
-			bool merged[MaxSize] = { false };
+			unsigned mergedMask = 0;
 			for (int j = size - 2; j >= 0; j--)
 			{
 				if (board[i][j] == 0) continue;
 				int col = j;
+
 				while (col < size - 1 && board[i][col + 1] == 0)
 				{
 					board[i][col + 1] = board[i][col];
 					board[i][col] = 0;
 					col++;
 				}
-				if (col < size - 1 && board[i][col + 1] == board[i][col] && !merged[col + 1])
+
+				if (col < size - 1 &&
+					board[i][col + 1] == board[i][col] &&
+					!(mergedMask & (1u << (col + 1))))
 				{
 					board[i][col + 1] *= 2;
 					board[i][col] = 0;
-					merged[col + 1] = true;
+					mergedMask |= (1u << (col + 1));
 				}
 			}
 		}
 	}
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < size; j++) {
-			if (curentboard[i][j] != board[i][j]) {
+
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			if (currentBoard[i][j] != board[i][j])
 				return true;
-			}
-		}
-	}
+
 	return false;
 }
-void printWelcomeMessage()
-{
-	std::cout << ORANGE << "===========================================\n";
-	std::cout << "	     WELCOME TO        \n";
-	std::cout << "		2048!   \n";
-	std::cout << "===========================================\n" << RESET;
-}
+
 void PrepareGame(int& size, char* name)
 {
 	std::cout << BOLDYELLOW << "Enter your name " << RED << "(MAX 100 Characters): " << RESET;
@@ -375,71 +477,14 @@ bool IsGameOver(int board[MaxSize][MaxSize], int size)
 	}
 	return true;
 }
-void swap(unsigned& x, unsigned& y) {
-	unsigned temp = x;
-	x = y;
-	y = temp;
-}
-void copy(const char* from, char* to) {
-	if (from == nullptr || to == nullptr) {
-		return;
-	}
-	while (*from != '\0') {
-		*to = *from;
-		++to;
-		++from;
-	}
-	*to = '\0';
-}
-void swap(char* str1, char* str2) {
-	char temp[MaxNameSize];
-	copy(str1, temp);
-	copy(str2, str1);
-	copy(temp, str2);
-}
-void deallocateMatrix(char** matrix, size_t rows) {
-	for (size_t row = 0; row < rows; ++row) {
-		delete[] matrix[row];
-	}
-	delete[] matrix;
-}
-char toChar(size_t digit) {
-	if (digit > 9) {
-		return '0';
-	}
-	return (char)('0' + digit);
-}
-size_t strlen(const char* str) {
-	if (str == nullptr) {
-		return 0;
-	}
-	size_t len = 0;
-	while (str[len++] != '\0');
-	return --len;
-}
-void concat(char* str1, const char* str2) {
-	if (str1 == nullptr || str2 == nullptr) {
-		return;
-	}
-	size_t len = strlen(str1);
-	while (*str2 != '\0') {
-		str1[len++] = *str2;
-		++str2;
-	}
-	str1[len] = '\0';
-}
-int myStrcmp(const char* a, const char* b)
+
+//Messages
+void printWelcomeMessage()
 {
-	int i = 0;
-
-	while (a[i] != '\0' && b[i] != '\0') {
-		if (a[i] != b[i]) {
-			return a[i] - b[i];
-		}
-		i++;
-	}
-
-	return a[i] - b[i];
+	std::cout << ORANGE << "===========================================\n";
+	std::cout << "	     WELCOME TO        \n";
+	std::cout << "		2048!   \n";
+	std::cout << "===========================================\n" << RESET;
 }
 void printLeaderboardMessage()
 {
@@ -448,7 +493,12 @@ void printLeaderboardMessage()
 	std::cout << "	   2048 Leaderboards!   \n";
 	std::cout << "===========================================\n" << RESET;
 }
-
+void printGoodbyeMessage() {
+	std::cout << BOLDGREEN << "===========================================\n";
+	std::cout << "	THANK YOU FOR PLAYING 2048!        \n";
+	std::cout << "===========================================\n" << RESET;
+}
+//Leaderboard functions
 char* getFilename(size_t dim) {
 	char* filename = new char[MAX_FILENAME_LEN]();
 	concat(filename, DIRECTORY);
@@ -489,6 +539,7 @@ void getNicknamesScores(size_t dim, char** nicknames, unsigned* scores, size_t& 
 	leaderboardFile.close();
 	delete[] filename;
 }
+
 void addNicknameScore(char* nickname, unsigned score, char** nicknames, unsigned* scores, size_t& count) {
 	for (size_t i = 0; i < count; ++i) {
 		if (myStrcmp(nickname, nicknames[i]) == 0) {
@@ -624,6 +675,7 @@ void showLeaderboard() {
 		clearConsole();
 	}
 }
+//Game loop
 void StartGame()
 {
 	clearConsole();
@@ -653,7 +705,11 @@ void StartGame()
 				break;
 			}
 			std::cout << "Use W/A/S/D to move tiles, Q to quit: ";
-			std::cin >> move;
+			while (!(std::cin >> move)) {
+				std::cin.clear();
+				std::cin.ignore(10000, '\n');
+			}
+			std::cin.ignore(10000, '\n');
 			if (move == 'Q' || move == 'q') {
 				quit = true;
 				break;
@@ -661,12 +717,12 @@ void StartGame()
 			wrongMoves++;
 		} while (!MoveTiles(board, size, move));
 		if (quit) {
-			std::cout << "Thanks for playing, " << name << "!\n";
+			std::cout << CYAN << "Thanks for playing, " << GREEN << name << CYAN << "!\n" << RESET;
 			appendLeaderboard(size, name, CalculateScore(board, size));
 			break;
 		}
 		if (ended) {
-			std::cout << "Game Over! No more moves possible.\n";
+			std::cout << BOLDMAGENTA << "Game Over! No more moves possible.\n" << RESET;
 			appendLeaderboard(size, name, CalculateScore(board, size));
 			break;
 		}
@@ -708,4 +764,5 @@ int main()
 			std::cout << RED << "Invalid input! Try again!\n " << RESET;
 		}
 	}
+	printGoodbyeMessage();
 }
